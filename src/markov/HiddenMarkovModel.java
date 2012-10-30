@@ -22,6 +22,7 @@ public class HiddenMarkovModel
 	private double[][] a;
 	private double[][] b;
 	private double[][] alpha;	
+	private double[][] viterbi;
 	
 	private LinkedList<String> backTrace;
 	
@@ -63,37 +64,68 @@ public class HiddenMarkovModel
 		this.T = (o.length) - 1;			
 	}
 	
-	
+	// Return the maximum of a list of numbers
+	private double getMax (ArrayList<Double> numbers)
+	{
+		double maximum = 0.0;
+		for (Double number : numbers)
+		{
+			if (number.doubleValue() > maximum)
+				maximum = number.doubleValue();
+		}
+		return maximum;
+	}
 	
 	// Construct the likelihood probabilities table/matrix using the forward algorithm
 	private void buildLikelihoodTable ()
 	{
 		
-		// Initialize likelihood probabilities
-		alpha = new double[(N + 2) + 1][(T) + 1];		
+		// Initialize likelihood  & viterbi probabilities
+		alpha = new double[(N + 2) + 1][(T) + 1];
+		viterbi = new double[(N + 2) + 1][(T) + 1];
 		for (int j = 1; j <= N; j++)
 		{			
 			for (int t = 1; t <= T; t++)
 			{		
 				if (t != 1)
+				{
 					alpha[j][t] = 0.0;
+					viterbi[j][t] = 0.0;
+				}
 				else
-					alpha[j][1] = a[0][j] * b[o[1]][j];		
+				{
+					alpha[j][1] = a[0][j] * b[o[1]][j];
+					viterbi[j][1] = a[0][j] * b[o[1]][j];
+				}
 			}	
 		}				
 //		System.out.println("After Initialization: \n" + printAlpha());
 		
-		// Populate the table
+		/* Populate the table */
+		
+		backTrace = new LinkedList<String>();
 		for (int t = 2; t <= T; t++)		
 		{						
 			for (int j = 1; j <= N; j++)
 			{				
+				ArrayList<Double> products = new ArrayList<Double>(); 
 				for (int i = 1; i <= N; i++)
-				{
-					alpha[j][t] += alpha[i][t - 1] * a[i][j] * b[o[t]][j];
+				{					
+					double probabilities = alpha[i][t - 1] * a[i][j] * b[o[t]][j]; 
+					alpha[j][t] += probabilities;					
 //					System.out.println(alpha[j][t] + " += " + alpha[i][t - 1] + " * " + a[i][j] + " * " + b[o[t]][j]);
 //					System.out.println("\nAfter i = " + i + ": \n" + printAlpha());
+					products.add(probabilities);
+					if (i == 1)
+						viterbi[j][t] = probabilities;
+					else 
+						if (probabilities > viterbi[j][t])
+							viterbi[j][t] = probabilities;
 				}
+				double maximum = getMax(products);
+				System.out.println("\nThis is the max: " + maximum + "\n");
+				System.out.println("\nThis is the max: " + viterbi[j][t] + "\n");
+//				backTrace.add(arg0)
 //				System.out.println("\nAfter j = " + j + ": \n" + printAlpha());
 			}
 //			System.out.println("\nAfter t = " + t + ": \n" + printAlpha());
@@ -101,9 +133,9 @@ public class HiddenMarkovModel
 		
 	}
 	
-	public String printAlpha ()
+	public String printTable (double[][] probabilities)
 	{
-		String output = "\nThe forward probabilities for the given input observations sequence ";
+		String output = "\nThe probabilities for the given input observations sequence ";
 		for (int i = 1; i <= T; i++)
 			output += o[i] + " ";
 		output += " is:\n";
@@ -118,7 +150,7 @@ public class HiddenMarkovModel
 			// Print the header rows
 			output += o[t] + "\t";
 			for (int j = 1; j <= N; j++)
-				output += new DecimalFormat("0.000000000000000").format(alpha[j][t]) + "\t";
+				output += new DecimalFormat("0.000000000000000").format(probabilities[j][t]) + "\t";
 			output += "\n";
 		}
 				
@@ -158,7 +190,7 @@ public class HiddenMarkovModel
 			    HMM.buildLikelihoodTable();		 // Likelihood computation using forward algorithm   
 			    
 			    // Display output		    
-			    String output = HMM.printAlpha();		    		  
+			    String output = HMM.printTable(HMM.alpha);		    		  
 			    System.out.print(output);
 			    bw.write(output);
 		    }
@@ -168,5 +200,6 @@ public class HiddenMarkovModel
 		bw.flush();
 		br.close();
 		bw.close();
+				
 	}
 }

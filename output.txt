@@ -1,0 +1,8 @@
+
+The forward probabilities for the given input observations sequence 3 1 3  is:
+START		HOT		COLD		END		
+3	0.320000000000000	0.020000000000000	
+1	0.046400000000000	0.054000000000000	
+3	0.021632000000000	0.004632000000000	
+
+======================End of Program======================
