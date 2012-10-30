@@ -5,7 +5,9 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 public class HiddenMarkovModel 
 {
@@ -19,7 +21,9 @@ public class HiddenMarkovModel
 	// Probabilities
 	private double[][] a;
 	private double[][] b;
-	private double[][] alpha;			
+	private double[][] alpha;	
+	
+	private LinkedList<String> backTrace;
 	
 	public HiddenMarkovModel () 
 	{		
@@ -65,7 +69,7 @@ public class HiddenMarkovModel
 	private void buildLikelihoodTable ()
 	{
 		
-		// Initialize values
+		// Initialize likelihood probabilities
 		alpha = new double[(N + 2) + 1][(T) + 1];		
 		for (int j = 1; j <= N; j++)
 		{			
@@ -75,8 +79,6 @@ public class HiddenMarkovModel
 					alpha[j][t] = 0.0;
 				else
 					alpha[j][1] = a[0][j] * b[o[1]][j];		
-//				System.out.println("row " + j + " col " + t + ": " + alpha[j][t]);
-//				System.out.println(alpha[j][1] + " = " + a[0][j] + " * " + b[o[1]][j]);
 			}	
 		}				
 //		System.out.println("After Initialization: \n" + printAlpha());
@@ -106,11 +108,17 @@ public class HiddenMarkovModel
 			output += o[i] + " ";
 		output += " is:\n";
 		
-		for (int j = 1; j <= N; j++)
+		// Print the header columns
+		for (String state : q)
+			output += state + "\t\t";
+		output += "\n";
+		
+		for (int t = 1; t <= T; t++)		
 		{
-			output += q.get(j) + ": ";
-			for (int t = 1; t <= T; t++)
-				output += alpha[j][t] + " ";
+			// Print the header rows
+			output += o[t] + "\t";
+			for (int j = 1; j <= N; j++)
+				output += new DecimalFormat("0.000000000000000").format(alpha[j][t]) + "\t";
 			output += "\n";
 		}
 				
@@ -124,7 +132,7 @@ public class HiddenMarkovModel
 		String input = "";
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		BufferedWriter bw = new BufferedWriter(new FileWriter("output.txt"));
-		while (!input.equalsIgnoreCase("q"))
+		while (true)
 		{			
 			if (args.length == 0)
 			{				   
@@ -134,22 +142,30 @@ public class HiddenMarkovModel
 			else
 				input = args[0]; // Take input from args instead if present
 			
-		    if (input != null)		    
+		    if (input != null)
+		    {
+		    	// Exit condition
+		    	if (input.equalsIgnoreCase("q"))
+		    		break;
+		    
 		    	HiddenMarkovModel.o = new int[(input.length()) + 1];		    
 		    	for (int i = 1; i < HiddenMarkovModel.o.length; i++)		    	
 		    		HiddenMarkovModel.o[i] = input.charAt((i) - 1) - 48; // subtract 48 to convert char to true int
 		    	
-		    // Create the Hidden Markov Model
-		    HiddenMarkovModel HMM = new HiddenMarkovModel();
-		    HMM.setParameters();
-		    HMM.buildLikelihoodTable();		 // Likelihood computation using forward algorithm   
-		    
-		    // Display output		    
-		    String output = HMM.printAlpha();		    		  
-		    System.out.print(output);
-		    bw.write(output);
-		}
-		
+			    // Create the Hidden Markov Model
+			    HiddenMarkovModel HMM = new HiddenMarkovModel();
+			    HMM.setParameters();
+			    HMM.buildLikelihoodTable();		 // Likelihood computation using forward algorithm   
+			    
+			    // Display output		    
+			    String output = HMM.printAlpha();		    		  
+			    System.out.print(output);
+			    bw.write(output);
+		    }
+		}		
+		System.out.println("\n======================End of Program======================\n");
+		bw.write("\n======================End of Program======================\n");
+		bw.flush();
 		br.close();
 		bw.close();
 	}
