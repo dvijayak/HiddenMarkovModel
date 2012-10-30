@@ -23,8 +23,10 @@ public class HiddenMarkovModel
 	private double[][] a;
 	private double[][] b;
 	private double[][] alpha;	
-	private double[][] viterbi;
+	private double[][] viterbi;	
 	
+	// Back-tracing pointers
+	private double[][] bp;
 	private LinkedList<Integer> backTrace;
 	
 	public HiddenMarkovModel () 
@@ -92,6 +94,7 @@ public class HiddenMarkovModel
 		
 		/* Populate the table */
 		
+		bp = new double[(N + 2) + 1][(T) + 1];
 		backTrace = new LinkedList<Integer>();
 		for (int t = 2; t <= T; t++)		
 		{						
@@ -103,27 +106,32 @@ public class HiddenMarkovModel
 					// Likelihood computation
 					double forward = alpha[i][t - 1] * a[i][j] * b[o[t]][j];					
 					alpha[j][t] += forward;					
-//					System.out.println(alpha[j][t] + " += " + alpha[i][t - 1] + " * " + a[i][j] + " * " + b[o[t]][j]);
-//					System.out.println("\nAfter i = " + i + ": \n" + printTable(alpha));
+					
 					// Viterbi probabiity computation
 					double decoding = viterbi[i][t - 1] * a[i][j] * b[o[t]][j];
 					if (i == 1)
 					{
 						viterbi[j][t] = decoding;
 						maxState = i;
+						bp[j][t] = i;
 					}
 					else 
 						if (decoding > viterbi[j][t]) // This is an implementation of a Max function
 						{
 							viterbi[j][t] = decoding;
 							maxState = i;
+							bp[j][t] = i;
 						}
+					
+					// Termination
+					if (t == T)
+					{
+						
+					}
 				}		
-				backTrace.add(new Integer(maxState));
-				System.out.println("\nThis is the max: " + viterbi[j][t] + " and it was in state " + q.get(backTrace.getLast().intValue()) + "\n");
-//				System.out.println("\nAfter j = " + j + ": \n" + printTable(alpha));
+//				if (j != N + 1)
+				backTrace.add(new Integer(maxState));				
 			}
-//			System.out.println("\nAfter t = " + t + ": \n" + printTable(alpha));
 /*			// Termination
 			if (t == T)
 			{
@@ -147,7 +155,24 @@ public class HiddenMarkovModel
 			}*/
 		}
 		
+		// Termination
+		for (int i = 1; i <= N; i++)
+		{
+			double trace = viterbi[i][T];
+			if (i == 1)
+			{
+				bp[N + 1][T] = i;
+			}
+			else
+				if (trace > viterbi[N + 1][T])
+				{
+					bp[N + 1][T] = i;
+				}
+		}		
+		
 		// Compute the hidden state sequence
+		
+		
 		
 	}
 	
@@ -223,6 +248,19 @@ public class HiddenMarkovModel
 			    output += HMM.printTable(HMM.viterbi);		    		  
 			    System.out.print(output);
 			    bw.write(output);
+			    
+			    System.out.println("\n" + HMM.backTrace.size());
+			    
+			    // Back-tracing Pointers
+			    output = "\nThe back-tracing pointers for the given input observations sequence ";
+				for (int i = 1; i <= HMM.T; i++)
+					output += HMM.o[i] + " ";
+				output += " are:\n";
+			    output += HMM.printTable(HMM.bp);		    		  
+			    System.out.print(output);
+			    bw.write(output);
+			    
+			    
 		    }
 		}		
 		System.out.println("\n======================End of Program======================\n");
