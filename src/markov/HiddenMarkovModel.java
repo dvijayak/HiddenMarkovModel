@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class HiddenMarkovModel 
 {
@@ -42,7 +43,7 @@ public class HiddenMarkovModel
 		a[2][2] = 0.6; // P(C|C)								
 		
 		// Default emission probabilities matrix
-		a = new double[(O) + 1][(N) + 1]; // Matrix of dimensions O rows x N cols
+		b = new double[(O) + 1][(N) + 1]; // Matrix of dimensions O rows x N cols
 		b[1][1] = 0.2; // P(1|H)
 		b[1][2] = 0.5; // P(1|C)
 		b[2][1] = 0.4; // P(1|H)
@@ -52,25 +53,9 @@ public class HiddenMarkovModel
 	}
 
 	
-	public void setParameters (String[] q, int[] o, double[][] a, double[][] b) 
-	{
-		for (int i = 0; i < q.length; i++)		
-			this.q.add(q[i]);
-		this.N = q.length;
-		
-		for (int t = 0; t < o.length; t++)		
-			this.o[t] = o[t];
-		this.T = o.length;		
-		
-		// Create the transition probabilities matrix
-		for (int i = 0; i < a.length; i++) 		
-			for (int j = 0; j < a[i].length; j++)
-				this.a[i][j] = a[i][j];
-		
-		// Create the emission probabilities matrix
-		for (int t = 0; t < b.length; t++)
-			for (int j = 0; j < b[t].length; j++)
-				this.b[t][j] = b[t][j];		
+	public void setParameters () 
+	{							
+		this.T = (o.length) - 1;			
 	}
 	
 	
@@ -78,54 +63,92 @@ public class HiddenMarkovModel
 	// Construct the likelihood probabilities table/matrix using the forward algorithm
 	private void buildLikelihoodTable ()
 	{
-		/* Initialize values */
-		alpha = new double[(N + 2) + 1][(T) + 1];
-		for (int j = 1; j <= N; j++)		
-			alpha[j][1] = a[0][j] * b[o[1]][j];
 		
-		for (int t = 1; t <= T; t++)
-		{
-			for (int j = 1; j <= N; j++)
-			{
-				alpha[j][t] = computeCell(t, j);
+		// Initialize values
+		alpha = new double[(N + 2) + 1][(T) + 1];		
+		for (int j = 1; j <= N; j++) {		
+			alpha[j][1] = a[0][j] * b[o[1]][j];					
+		}
+		System.out.println("YES" + o[1]);
+		
+		// Populate the table
+		for (int j = 1; j <= N; j++)		
+		{						
+			for (int t = 2; t <= T; t++)
+			{				
+				for (int i = 1; i <= N; i++)
+				{
+					alpha[j][t] += alpha[i][t - 1] * a[i][j] * b[t][j];
+				}
+				
+				
+				
+				// Recursion
+//				alpha[j][t] = computeCell(j, t);					
 			}
 		}
 		
 	}
 	
-	private double computeCell (int t, int j)
+	private double computeCell (int j, int t)
 	{
 		double likelihood = 0;
 		
 		for (int i = 1; i <= N; i++)
-		{
-			likelihood += computeCell(i, t - 1) * a[i][j] * b[t][j];
+		{									
+//			System.out.format("%f%d and %f%d and %f%d\n", alpha[i][t-1], t, a[i][j], j, b[t][j], t);
+			likelihood += alpha[i][t - 1] * a[i][j] * b[t][j];
+//			likelihood += getAlpha(i, t) * a[i][j] * b[t][j];
 		}
 		
-//		alpha[j][t] = likelihood; // Cell at row j and column t
-		
-//		return alpha[j][t];
 		return likelihood;
 	}
-
 	
+	private double getAlpha (int i, int t)
+	{
+		if (t == 1)
+			return alpha[i][t];
+		else
+			return getAlpha(i, t - 1);
+	}
+	
+	public String printAlpha ()
+	{
+		String output = "The forward probabilities for the given input observations sequence ";
+		for (int i = 1; i <= T; i++)
+			output += o[i] + " ";
+		output += " is:\n";
+		
+		for (int j = 1; j <= N; j++)
+		{
+			output += q.get(j) + ": ";
+			for (int t = 1; t <= T; t++)
+				output += alpha[j][t] + " ";
+			output += "\n";
+		}
+				
+		return output;
+	}
 	
 	public static void main(String[] args) throws IOException 
-	{
-//		HiddenMarkovModel HMM = new HiddenMarkovModel();
-		
+	{			
 		System.out.println("\nWelcome to this Hidden Markov Model simulator!\n");
 		String input = "";
-		while (!input.equalsIgnoreCase("q"))
-		{			
+//		while (!input.equalsIgnoreCase("q"))
+//		{			
 			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));		    
-			System.out.println("Please enter a sequence of integer observations from the vocabulary V = {1, 2, 3}\n");			
+			System.out.println("Please enter a sequence of integer observations from the vocabulary V = {1, 2, 3}");			
 		    input = in.readLine();
 		    
 		    if (input != null)		    
-		    	HiddenMarkovModel.o = new int[input.length()];
-		    	for (int i = 0; i < input.length(); i++)		    	
-		    		HiddenMarkovModel.o[i] = input.charAt(i) - 48; // subtract 48 to convert char to true int		    				    			    		    				
-		}
+		    	HiddenMarkovModel.o = new int[(input.length()) + 1];		    
+		    	for (int i = 1; i < HiddenMarkovModel.o.length; i++)		    	
+		    		HiddenMarkovModel.o[i] = input.charAt((i) - 1) - 48; // subtract 48 to convert char to true int
+		    	
+		    HiddenMarkovModel HMM = new HiddenMarkovModel();
+		    HMM.setParameters();
+		    HMM.buildLikelihoodTable();		    
+		    System.out.print(HMM.printAlpha());
+//		}
 	}
 }
