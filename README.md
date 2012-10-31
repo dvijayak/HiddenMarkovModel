@@ -18,12 +18,12 @@ Hello Dr. Wang! This is a simulation of the Hidden Markov Model as it is applied
 	```
 
 ## Optional Command-Line Arguments:
-	### ATTENTION: COMMAND-LINE ARGUMENTS ARE BROKEN AT THE MOMENT - SORRY!
-	The program accepts the input sequence from `stdin`. You also have the option of inputing the String as a command-line argument 
-	For example:
-	```
-	java -cp bin;libs/guava-13.0.1.jar markov.HiddenMarkovModel 3133132
-	```
+### ATTENTION: COMMAND-LINE ARGUMENTS ARE BROKEN AT THE MOMENT - SORRY!
+The program accepts the input sequence from `stdin`. You also have the option of inputing the String as a command-line argument 
+For example:
+```
+java -cp bin;libs/guava-13.0.1.jar markov.HiddenMarkovModel 3133132
+```
 	
 ## Caution
 
