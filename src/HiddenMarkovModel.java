@@ -8,33 +8,24 @@ import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Map;
-
-import com.google.common.collect.HashBasedTable;
 
 public class HiddenMarkovModel 
-{	
-	private ArrayList<String> states;
-	private ArrayList<String> hiddenStates;
+{
+	private ArrayList<String> q;
+	private ArrayList<String> hiddenQ;
 	private int N; // Number of states
 	
-	private ArrayList<String> v; // Vocabulary of observations
+	private int[] v; // Vocabulary of observations
 	private int V; // Number of possible observations
-	private ArrayList<String> o; // Sequence of observations (max 20)	
+	private int[] o; // Sequence of observations (max 20)	
 	private int T; // Number of observations (given sequence)	
 	
 	// Probabilities
-	private HashBasedTable<String, String, Double> transitions;
-	private HashBasedTable<String, String, Double> emissions;
-	private HashBasedTable<String, String, Double> alpha;
-	private HashBasedTable<String, String, Double> viterbi;
-	
-	private Map<String, Double> start;
-/*	private double[][] a;
+	private double[][] a;
 	private double[][] b;
 	private double[][] alpha;	
 	private double obsGivenLambda; // P(O|lambda) = alpha(END, T)
-	private double[][] viterbi;*/		
+	private double[][] viterbi;		
 	
 	// Back-tracing pointers
 	private double[][] bp;
@@ -44,41 +35,38 @@ public class HiddenMarkovModel
 	{		
 		/* Default parameters */
 		
-		// States (minus START and END)
-		states = new ArrayList<String>();		
-		states.add("START");
-		states.add("HOT");
-		states.add("COLD");	
-		states.add("END");
-		N = states.size() - 2; // discard START and END in the count of states
+		q = new ArrayList<String>();		
+		q.add("HOT");
+		q.add("COLD");		
+		N = q.size();
 		
-		// Vocabulary		
-		v = new ArrayList<String>();
-		v.add("1");
-		v.add("2");
-		v.add("3");
-		V = v.size(); // possible values are 1, 2 and 3	
+		V = 3; // possible values are 1, 2 and 3	
 		
-		// Transition probabilities table/matrix
-		transitions = HashBasedTable.create(N, N); // Dimensions N x N
-		transitions.put("START", "HOT", 0.8); // P(H|START)
-		transitions.put("START", "COLD", 0.2); // P(C|START)
-		transitions.put("HOT", "HOT", 0.7); // P(H|H)
-		transitions.put("HOT", "COLD", 0.3); // P(C|H)
-		transitions.put("COLD", "HOT", 0.4); // P(H|C)
-		transitions.put("COLD", "COLD", 0.6); // P(C|C)
-				
-		// Emission probabilities table/matrix
-		emissions = HashBasedTable.create(V, N); // Dimensions V x N
-		emissions.put("1", "HOT", 0.2); // P(1|H)
-		emissions.put("1", "COLD", 0.5); // P(1|C)
-		emissions.put("2", "HOT", 0.4); // P(2|H)
-		emissions.put("2", "COLD", 0.4); // P(2|C)
-		emissions.put("3", "HOT", 0.4); // P(3|H)
-		emissions.put("3", "COLD", 0.1); // P(3|C)				
+		// Default transition probabilities matrix
+		a = new double[N + 1][N]; // Matrix of dimensions N+1 rows and N cols		
+		a[0][0] = 0.7; // P(H|H)
+		a[0][1] = 0.3; // P(C|H)
+		a[1][0] = 0.4; // P(H|C)
+		a[1][1] = 0.6; // P(C|C)
+		a[2][0] = 0.8; // P(H|START)
+		a[2][1] = 0.2; // P(C|START)
 		
+		// Default emission probabilities matrix
+		b = new double[O][N]; // Matrix of dimensions O rows x N cols
+		b[0][0] = 0.2; // P(1|H)
+		b[0][1] = 0.5; // P(1|C)
+		b[1][0] = 0.4; // P(2|H)
+		b[1][1] = 0.4; // P(2|C)
+		b[2][0] = 0.4; // P(3|H)
+		b[2][1] = 0.1; // P(3|C)
 	}
 
+	
+	public void setParameters () 
+	{							
+		this.T = o.length;			
+	}
+	
 	// Construct the decoding probabilities table/matrix using the Viterbi algorithm
 	private void buildViterbiTable ()
 	{
@@ -147,15 +135,12 @@ public class HiddenMarkovModel
 	}
 	
 	// Construct the likelihood probabilities table/matrix using the Forward algorithm
-	private void buildLikelihoodTable (ArrayList<String>obs)
-	{	
-		o = obs;
-		T = o.size();
-		
-		// Initialize likelihood probabilities		
-		alpha = HashBasedTable.create(N + 2, T);
-		for (String state : states)
-			alpha.put(state, o.get(0), transitions.get("START", state) * emissions.get(o.get(0), state));										
+	private void buildLikelihoodTable ()
+	{		
+		// Initialize likelihood probabilities
+		alpha = new double[N + 2][T];		
+		for (int j = 0; j < N; j++)			
+			alpha[j][0] = a[N][j] * b[(o[0])-1][j];												
 		
 		// Populate the table			
 		for (int t = 1; t < T; t++)	// Step through each time (starting from the second) step/event/observation	
@@ -219,18 +204,15 @@ public class HiddenMarkovModel
 		    	// Exit condition
 		    	if (input.equalsIgnoreCase("q"))
 		    		break;
-		   
-		    	// Parse the input sequence
-			    ArrayList<String> obs = new ArrayList<String>();
-		    	for (int i = 1; i < input.length(); i++)
-		    	{
-		    		char[] c = {input.charAt(i)};		    		
-		    		obs.add(new String(c));
-		    	}
-		   
+		    
 		    	// Create the Hidden Markov Model
-			    HiddenMarkovModel HMM = new HiddenMarkovModel();		    	
-			    HMM.buildLikelihoodTable(obs);		 // Likelihood computation using forward algorithm   
+			    HiddenMarkovModel HMM = new HiddenMarkovModel();
+		    	HMM.o = new int[(input.length()) + 1];		    
+		    	for (int i = 1; i < HMM.o.length; i++)		    	
+		    		HMM.o[i] = input.charAt((i) - 1) - 48; // subtract 48 to convert char to true int
+		    				    
+			    HMM.setParameters();
+			    HMM.buildLikelihoodTable();		 // Likelihood computation using forward algorithm   
 			    
 			    /* Display output */
 			    
