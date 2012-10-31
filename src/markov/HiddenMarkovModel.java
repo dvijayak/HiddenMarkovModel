@@ -6,7 +6,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.HashBasedTable;
@@ -15,7 +16,7 @@ import com.google.common.collect.Table;
 public class HiddenMarkovModel 
 {	
 	private ArrayList<String> states;
-	private ArrayList<String> hiddenStates;
+	private String hiddenStateSequence;
 	private int N; // Number of states
 	
 	private ArrayList<String> v; // Vocabulary of observations
@@ -23,19 +24,14 @@ public class HiddenMarkovModel
 	private ArrayList<String> o; // Sequence of observations (max 20)	
 	private int T; // Number of observations (given sequence)	
 	
-	// Probabilities
+	// Probabilities Tables/Matrices
 	private Table<String, String, Double> transitions;
 	private Table<String, String, Double> emissions;
 	private Table<String, Integer, Double> alpha;
 	private Table<String, Integer, Double> viterbi;
-	private Table<String, Integer, Double> backpointer;
-		
-	private double[][] a;
 	
-	
-	// Back-tracing pointers
-//	private double[][] bp;
-	private LinkedList<Integer> backTrace;
+	// Backtrace pointer
+	private Map<String, String> backTrace;
 	
 	public HiddenMarkovModel () 
 	{		
@@ -76,7 +72,7 @@ public class HiddenMarkovModel
 
 	// Construct the likelihood probabilities table/matrix using the Forward algorithm
 	// Returns P(O|lambda)
-	private double buildLikelihoodTable (ArrayList<String>obs)
+	private void buildLikelihoodTable (ArrayList<String>obs)
 	{	
 		o = obs;
 		T = o.size();
@@ -106,61 +102,67 @@ public class HiddenMarkovModel
 		for (String i : states)
 			termination += alpha.get(i, T - 1);
 					
-		alpha.put("END", T - 1, termination);		
-				
-		return termination; // P(O|lambda)
+		alpha.put("END", T - 1, termination); // P(O|lambda)								
 	}
 	
 	// Construct the decoder probabilities table/matrix using the Viterbi algorithm
-	// Returns P* and bt*
-	private double buildViterbiTable (ArrayList<String>obs)
+	// Returns P* and hidden state sequence*	
+	private void buildViterbiTable (ArrayList<String>obs)
 	{	
 		o = obs;
 		T = o.size();
 		
-		// Initialize likelihood probabilities						
+		// Initialize viterbi probabilities and back-trace						
 		viterbi = HashBasedTable.create(N + 2, T); 
-		backpointer = HashBasedTable.create(N + 2, T);
+		backTrace = new HashMap<String, String>();
 		for (String state : states)
-//		{
-			viterbi.put(state, 0, transitions.get("START", state) * emissions.get(o.get(0), state));
-//		}
+		{
+			viterbi.put(state, 0, transitions.get("START", state) * emissions.get(o.get(0), state));			
+			backTrace.put(state, state);
+		}
 		
 		// Populate the table
 		for (int t = 1; t < T; t++) // Step through each observation starting from the second one, i.e. t > 0
-		{			
+		{		
+			Map<String, String> backpointer = new HashMap<String, String>();
 			for (String j : states) // Step through each state
 			{
-				// Maximum computation
+				// max & argmax computation
 				double maximum = 0;
+				String argMaximum = j;
 				for (String i : states)
 				{
 					double interim = viterbi.get(i, t - 1) * transitions.get(i, j) * emissions.get(o.get(t), j);
 					if (interim > maximum)
+					{
 						maximum = interim;
+						argMaximum = i;
+					}
 				}
-				viterbi.put(j, t, maximum);
-			}			
+				viterbi.put(j, t, maximum);				
+				backpointer.put(j, backTrace.get(argMaximum) + "->" + j); 
+			}
+			backTrace = backpointer;
 		}
-		
+				
 		// Termination
 		double pStar = 0;
+		String btStar = states.get(0); // btStar is the state of the cell with the highest score
 		for (String i : states)
 		{
 			double interim = viterbi.get(i, T - 1);
-			if (interim > pStar)
+			if (interim > pStar) 
+			{
 				pStar = interim;
-		}
-					
-		viterbi.put("END", T - 1, pStar);		
-				
-		return pStar; // P* and bt*
+				btStar = i;
+			}
+		}					
+		
+		viterbi.put("END", T - 1, pStar);					
+		hiddenStateSequence = backTrace.get(btStar);		
 	}
 		
-	private ArrayList<String> computeHiddenStateSequence (double pStar)
-	{
-		return null;
-	}
+
 	
 	public String printTable (Table<String, Integer, Double> table)
 	{
@@ -226,8 +228,8 @@ public class HiddenMarkovModel
 			    	for (String v : HMM.v)
 			    		if (!o.equals(v))
 			    			continue; */
-			    double probOfObsGivenLambda = HMM.buildLikelihoodTable(obs);		 // Likelihood computation using Forward algorithm			    
-			    double pStar = HMM.buildViterbiTable(obs);		 // Decoding computation using Viterbi algorithm
+			    HMM.buildLikelihoodTable(obs);		 // Likelihood computation using Forward algorithm			    			    
+				HMM.buildViterbiTable(obs);		 // Decoding computation using Viterbi algorithm
 			    
 			    /* Display output */
 			    
@@ -237,7 +239,7 @@ public class HiddenMarkovModel
 					output += o + " ";
 				output += " are:\r\n";
 			    output += HMM.printTable(HMM.alpha);
-			    output += "The termination P(O|lambda) = " + probOfObsGivenLambda + "\r\n";
+			    output += "The termination P(O|lambda) = " + HMM.alpha.get("END", HMM.T - 1) + "\r\n";
 			    System.out.print(output);
 			    bw.write(output);
 			    
@@ -247,20 +249,13 @@ public class HiddenMarkovModel
 					output += o + " ";
 				output += " are:\r\n";
 			    output += HMM.printTable(HMM.viterbi);		
-			    output += "The termination P* (Highest Score) = " + pStar + "\r\n";
+			    output += "The termination P* (Highest Score) = " + HMM.viterbi.get("END", HMM.T - 1) + "\r\n";
+			    output += "DECODING COMPLETE: The hidden state sequence is = " + HMM.hiddenStateSequence + "\r\n";
 			    System.out.print(output);
-			    bw.write(output);
+			    bw.write(output);		
 			    
-			    /*System.out.println("\r\n" + HMM.backTrace.size());
-			    
-			    // Back-tracing Pointers
-			    output = "\r\nThe back-tracing pointers for the given input observations sequence ";
-				for (int i = 1; i <= HMM.T; i++)
-					output += HMM.o[i] + " ";
-				output += " are:\r\n";
-			    output += HMM.printTable(HMM.bp);		    		  
-			    System.out.print(output);
-			    bw.write(output);	 */		    			    
+			    System.out.println("\r\n==========================Return==========================\r\n");
+			    bw.write("\r\n==========================Return==========================\r\n");
 		    }
 		}		
 		System.out.println("\r\n======================End of Program======================\r\n");
