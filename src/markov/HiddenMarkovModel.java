@@ -28,16 +28,13 @@ public class HiddenMarkovModel
 	private Table<String, String, Double> emissions;
 	private Table<String, Integer, Double> alpha;
 	private Table<String, Integer, Double> viterbi;
+	private Table<String, Integer, Double> backpointer;
+		
+	private double[][] a;
 	
-	private Map<String, Double> start;
-/*	private double[][] a;
-	private double[][] b;
-	private double[][] alpha;	
-	private double obsGivenLambda; // P(O|lambda) = alpha(END, T)
-	private double[][] viterbi;*/		
 	
 	// Back-tracing pointers
-	private double[][] bp;
+//	private double[][] bp;
 	private LinkedList<Integer> backTrace;
 	
 	public HiddenMarkovModel () 
@@ -77,73 +74,6 @@ public class HiddenMarkovModel
 		
 	}
 
-	/*// Construct the decoding probabilities table/matrix using the Viterbi algorithm
-	private void buildViterbiTable ()
-	{
-		// Initialize likelihood  & viterbi probabilities
-		alpha = new double[(N + 2) + 1][(T) + 1];
-		viterbi = new double[(N + 2) + 1][(T) + 1];
-		for (int j = 1; j <= N; j++)
-		{			
-			for (int t = 1; t <= T; t++)
-			{		
-				if (t != 1)
-				{
-					alpha[j][t] = 0.0;
-					viterbi[j][t] = 0.0;
-				}
-				else
-				{
-					alpha[j][1] = a[0][j] * b[o[1]][j];
-					viterbi[j][1] = a[0][j] * b[o[1]][j];
-				}
-			}	
-		}				
-		
-		 Populate the table 
-		
-		bp = new double[(N + 2) + 1][(T) + 1];
-		backTrace = new LinkedList<Integer>();
-		for (int t = 2; t <= T; t++)		
-		{						
-			for (int j = 1; j <= N; j++)
-			{				
-				int maxState = 1; // The state which produced the maximum for the Viterbi computation
-				for (int i = 1; i <= N; i++)
-				{			
-					// Likelihood computation
-					double forward = alpha[i][t - 1] * a[i][j] * b[o[t]][j];					
-					alpha[j][t] += forward;					
-					
-					// Viterbi probabiity computation
-					double decoding = viterbi[i][t - 1] * a[i][j] * b[o[t]][j];
-					if (i == 1)
-					{
-						viterbi[j][t] = decoding;
-						maxState = i;
-						bp[j][t] = i;
-					}
-					else 
-						if (decoding > viterbi[j][t]) // This is an implementation of a Max function
-						{
-							viterbi[j][t] = decoding;
-							maxState = i;
-							bp[j][t] = i;
-						}
-					
-					// Termination
-					if (t == T)
-					{
-						
-					}
-				}		
-//				if (j != N + 1)
-				backTrace.add(new Integer(maxState));				
-			}
-
-		}	
-	}*/
-	
 	// Construct the likelihood probabilities table/matrix using the Forward algorithm
 	// Returns P(O|lambda)
 	private double buildLikelihoodTable (ArrayList<String>obs)
@@ -190,8 +120,11 @@ public class HiddenMarkovModel
 		
 		// Initialize likelihood probabilities						
 		viterbi = HashBasedTable.create(N + 2, T); 
-		for (String state : states)			
-			viterbi.put(state, 0, transitions.get("START", state) * emissions.get(o.get(0), state));										
+		backpointer = HashBasedTable.create(N + 2, T);
+		for (String state : states)
+//		{
+			viterbi.put(state, 0, transitions.get("START", state) * emissions.get(o.get(0), state));
+//		}
 		
 		// Populate the table
 		for (int t = 1; t < T; t++) // Step through each observation starting from the second one, i.e. t > 0
@@ -211,15 +144,24 @@ public class HiddenMarkovModel
 		}
 		
 		// Termination
-		double termination = 0;
+		double pStar = 0;
 		for (String i : states)
-			termination += viterbi.get(i, T - 1);
+		{
+			double interim = viterbi.get(i, T - 1);
+			if (interim > pStar)
+				pStar = interim;
+		}
 					
-		viterbi.put("END", T - 1, termination);		
+		viterbi.put("END", T - 1, pStar);		
 				
-		return termination; // P* and bt*
+		return pStar; // P* and bt*
 	}
 		
+	private ArrayList<String> computeHiddenStateSequence (double pStar)
+	{
+		return null;
+	}
+	
 	public String printTable (Table<String, Integer, Double> table)
 	{
 		String output = "";
@@ -228,7 +170,7 @@ public class HiddenMarkovModel
 		output += "\t\t";
 		for (String obs : o)
 			output += obs + "\t\t\t";
-		output += "\n";
+		output += "\r\n";
 		
 		for (String state : states)
 		{
@@ -240,7 +182,7 @@ public class HiddenMarkovModel
 				{
 					output += table.get(state, t) + "\t";
 				}
-				output += "\n";	
+				output += "\r\n";	
 			}			
 		}
 			
@@ -249,7 +191,7 @@ public class HiddenMarkovModel
 	
 	public static void main(String[] args) throws IOException 
 	{			
-		System.out.println("\nWelcome to this Hidden Markov Model simulator!");
+		System.out.println("\r\nWelcome to this Hidden Markov Model simulator!");
 		
 		String input = "";
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -258,7 +200,7 @@ public class HiddenMarkovModel
 		{			
 			if (args.length == 0)
 			{				   
-				System.out.println("\nPlease enter a sequence of integer observations from the vocabulary V = {1, 2, 3}");			
+				System.out.println("\r\nPlease enter a sequence of integer observations from the vocabulary V = {1, 2, 3}");			
 			    input = br.readLine();		    
 			}
 			else
@@ -280,47 +222,49 @@ public class HiddenMarkovModel
 		   
 		    	// Create the Hidden Markov Model
 			    HiddenMarkovModel HMM = new HiddenMarkovModel();		
-//			    for (String o : obs)
-//			    	for (String v : HMM.v)
-//			    		if (!o.equals(v))
-//			    			continue;
-			    HMM.buildLikelihoodTable(obs);		 // Likelihood computation using Forward algorithm
-			    HMM.buildViterbiTable(obs);		 // Decoding computation using Viterbi algorithm
+			    /* for (String o : obs) // TODO: Check if observations are in vocabulary
+			    	for (String v : HMM.v)
+			    		if (!o.equals(v))
+			    			continue; */
+			    double probOfObsGivenLambda = HMM.buildLikelihoodTable(obs);		 // Likelihood computation using Forward algorithm			    
+			    double pStar = HMM.buildViterbiTable(obs);		 // Decoding computation using Viterbi algorithm
 			    
 			    /* Display output */
 			    
 			    // Forward Probabilities
-			    String output = "\nThe likelihood computations for the given input observations sequence ";
+			    String output = "\r\nThe likelihood computations for the given input observations sequence ";
 			    for (String o : HMM.o)				
 					output += o + " ";
-				output += " are:\n";
-			    output += HMM.printTable(HMM.alpha);		    		  
+				output += " are:\r\n";
+			    output += HMM.printTable(HMM.alpha);
+			    output += "The termination P(O|lambda) = " + probOfObsGivenLambda + "\r\n";
 			    System.out.print(output);
 			    bw.write(output);
 			    
  			    // Viterbi Probabilities
-			    output = "\nThe decoder computations for the given input observations sequence ";
+			    output = "\r\nThe decoder computations for the given input observations sequence ";
 			    for (String o : HMM.o)				
 					output += o + " ";
-				output += " are:\n";
-			    output += HMM.printTable(HMM.viterbi);		    		  
+				output += " are:\r\n";
+			    output += HMM.printTable(HMM.viterbi);		
+			    output += "The termination P* (Highest Score) = " + pStar + "\r\n";
 			    System.out.print(output);
 			    bw.write(output);
 			    
-			    /*System.out.println("\n" + HMM.backTrace.size());
+			    /*System.out.println("\r\n" + HMM.backTrace.size());
 			    
 			    // Back-tracing Pointers
-			    output = "\nThe back-tracing pointers for the given input observations sequence ";
+			    output = "\r\nThe back-tracing pointers for the given input observations sequence ";
 				for (int i = 1; i <= HMM.T; i++)
 					output += HMM.o[i] + " ";
-				output += " are:\n";
+				output += " are:\r\n";
 			    output += HMM.printTable(HMM.bp);		    		  
 			    System.out.print(output);
 			    bw.write(output);	 */		    			    
 		    }
 		}		
-		System.out.println("\n======================End of Program======================\n");
-		bw.write("\n======================End of Program======================\n");
+		System.out.println("\r\n======================End of Program======================\r\n");
+		bw.write("\r\n======================End of Program======================\r\n");
 		bw.flush();
 		br.close();
 		bw.close();
