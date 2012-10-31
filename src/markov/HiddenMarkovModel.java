@@ -46,11 +46,11 @@ public class HiddenMarkovModel
 		
 		// States (minus START and END)
 		states = new ArrayList<String>();		
-		states.add("START");
+//		states.add("START");
 		states.add("HOT");
 		states.add("COLD");	
-		states.add("END");
-		N = states.size() - 2; // discard START and END in the count of states
+//		states.add("END");
+		N = states.size(); // discard START and END in the count of states
 		
 		// Vocabulary		
 		v = new ArrayList<String>();
@@ -79,10 +79,10 @@ public class HiddenMarkovModel
 		
 	}
 
-	// Construct the decoding probabilities table/matrix using the Viterbi algorithm
+	/*// Construct the decoding probabilities table/matrix using the Viterbi algorithm
 	private void buildViterbiTable ()
 	{
-// Initialize likelihood  & viterbi probabilities
+		// Initialize likelihood  & viterbi probabilities
 		alpha = new double[(N + 2) + 1][(T) + 1];
 		viterbi = new double[(N + 2) + 1][(T) + 1];
 		for (int j = 1; j <= N; j++)
@@ -102,7 +102,7 @@ public class HiddenMarkovModel
 			}	
 		}				
 		
-		/* Populate the table */
+		 Populate the table 
 		
 		bp = new double[(N + 2) + 1][(T) + 1];
 		backTrace = new LinkedList<Integer>();
@@ -144,10 +144,10 @@ public class HiddenMarkovModel
 			}
 
 		}	
-	}
+	}*/
 	
 	// Construct the likelihood probabilities table/matrix using the Forward algorithm
-	private void buildLikelihoodTable (ArrayList<String>obs)
+	private double buildLikelihoodTable (ArrayList<String>obs)
 	{	
 		o = obs;
 		T = o.size();
@@ -157,7 +157,29 @@ public class HiddenMarkovModel
 		for (String state : states)
 			alpha.put(state, o.get(0), transitions.get("START", state) * emissions.get(o.get(0), state));										
 		
-		// Populate the table			
+		// Populate the table
+		for (int t = 1; t < T; t++) // Step through each observation starting from the second one, i.e. t > 0
+		{			
+			for (String j : states) // Step through each state
+			{
+				// Likelihood computation
+				double likelihood = 0;
+				for (String i : states)
+				{
+					likelihood += alpha.get(i, o.get(t - 1)) * transitions.get(i, j) * emissions.get(o.get(t), j);
+				}
+				alpha.put(j, o.get(t), likelihood);
+			}			
+		}
+		
+		double termination = 0;
+		for (String i : states)
+			termination += alpha.get(i, o.get(T - 1));
+					
+		alpha.put("END", o.get(T - 1), termination);
+		System.out.println("END IS " + termination);
+		
+/*		// Populate the table			
 		for (int t = 1; t < T; t++)	// Step through each time (starting from the second) step/event/observation	
 		{						
 			for (int j = 0; j < N; j++) // Step through each state
@@ -170,30 +192,36 @@ public class HiddenMarkovModel
 			}
 
 		}
+		*/
 		
 		
-		
-		
+		return termination;
 	}
 	
-	public String printTable (double[][] probabilities)
+	public String printTable (HashBasedTable<String, String, Double> table)
 	{
 		String output = "";
 		
 		// Print the header columns
-		for (String state : q)
-			output += state + "\t\t";
+		output += "\t\t";
+		for (String obs : o)
+			output += obs + "\t\t\t";
 		output += "\n";
 		
-		for (int t = 1; t <= T; t++)		
+		for (String state : states)
 		{
-			// Print the header rows
-			output += o[t] + "\t";
-			for (int j = 1; j <= N; j++)
-				output += new DecimalFormat("0.000000000000000").format(probabilities[j][t]) + "\t";
-			output += "\n";
+			if (!state.equalsIgnoreCase("START") && !state.equalsIgnoreCase("END"))
+			{
+				// Print the header rows
+				output += state + "\t"; 
+				for (String obs : o)
+				{
+					output += table.get(state, obs) + "\t";
+				}
+				output += "\n";	
+			}			
 		}
-				
+			
 		return output;
 	}
 	
@@ -222,22 +250,26 @@ public class HiddenMarkovModel
 		   
 		    	// Parse the input sequence
 			    ArrayList<String> obs = new ArrayList<String>();
-		    	for (int i = 1; i < input.length(); i++)
+		    	for (int i = 0; i < input.length(); i++)
 		    	{
 		    		char[] c = {input.charAt(i)};		    		
 		    		obs.add(new String(c));
 		    	}
 		   
 		    	// Create the Hidden Markov Model
-			    HiddenMarkovModel HMM = new HiddenMarkovModel();		    	
+			    HiddenMarkovModel HMM = new HiddenMarkovModel();		
+//			    for (String o : obs)
+//			    	for (String v : HMM.v)
+//			    		if (!o.equals(v))
+//			    			continue;
 			    HMM.buildLikelihoodTable(obs);		 // Likelihood computation using forward algorithm   
 			    
 			    /* Display output */
 			    
 			    // Forward Probabilities
 			    String output = "\nThe likelihood computations for the given input observations sequence ";
-				for (int i = 1; i <= HMM.T; i++)
-					output += HMM.o[i] + " ";
+			    for (String o : HMM.o)				
+					output += o + " ";
 				output += " are:\n";
 			    output += HMM.printTable(HMM.alpha);		    		  
 			    System.out.print(output);
