@@ -5,12 +5,13 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Map;
 
+import com.google.common.collect.ArrayTable;
 import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 
 public class HiddenMarkovModel 
 {	
@@ -24,10 +25,10 @@ public class HiddenMarkovModel
 	private int T; // Number of observations (given sequence)	
 	
 	// Probabilities
-	private HashBasedTable<String, String, Double> transitions;
-	private HashBasedTable<String, String, Double> emissions;
-	private HashBasedTable<String, String, Double> alpha;
-	private HashBasedTable<String, String, Double> viterbi;
+	private Table<String, String, Double> transitions;
+	private Table<String, String, Double> emissions;
+	private Table<String, String, Double> alpha;
+	private Table<String, String, Double> viterbi;
 	
 	private Map<String, Double> start;
 /*	private double[][] a;
@@ -176,8 +177,7 @@ public class HiddenMarkovModel
 		for (String i : states)
 			termination += alpha.get(i, o.get(T - 1));
 					
-		alpha.put("END", o.get(T - 1), termination);
-		System.out.println("END IS " + termination);
+		alpha.put("END", o.get(T - 1), termination);		
 		
 /*		// Populate the table			
 		for (int t = 1; t < T; t++)	// Step through each time (starting from the second) step/event/observation	
@@ -198,7 +198,7 @@ public class HiddenMarkovModel
 		return termination;
 	}
 	
-	public String printTable (HashBasedTable<String, String, Double> table)
+	public String printTable (Table<String, String, Double> table)
 	{
 		String output = "";
 		
