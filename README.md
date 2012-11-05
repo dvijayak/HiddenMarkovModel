@@ -31,4 +31,4 @@ java -cp bin;libs/guava-13.0.1.jar markov.HiddenMarkovModel 3133132
 
 PLEASE only use the vocabulary {"1", "2", "3"}. The model does not reject observation that do not exist in the vocabulary YET. Your application will crash if you do not heed this warning.
 
-## Thank you!
+# Thank you!
