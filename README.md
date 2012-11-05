@@ -11,7 +11,7 @@ This software uses the [Google Guava library](http://code.google.com/p/guava-lib
 	git clone -b `master` https://github.com/dvijayak/HiddenMarkovModel.git
 	```
 	### OR
-	Download a ZIP archive of the source from here: https://github.com/dvijayak/HiddenMarkovModel
+	Download a ZIP archive of the source from [here](https://github.com/dvijayak/HiddenMarkovModel)
 	
 *	Compile and Run as follows:
 	```
@@ -29,6 +29,6 @@ java -cp bin;libs/guava-13.0.1.jar markov.HiddenMarkovModel 3133132
 	
 ## Caution
 
-PLEASE only use the vocabulary {"1", "2", "3"}. The model does not reject observation that do not exist in the vocabulary YET. Your application will crash if you do not heed this warning.
+PLEASE only use the vocabulary {"1", "2", "3"}. The model does not reject observations that do not exist in the vocabulary YET. Your application will crash if you do not heed this warning.
 
 # Thank you!
