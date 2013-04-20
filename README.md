@@ -1,4 +1,4 @@
-# Hidden Markov Model
+# Hidden Markov ModelS
 
 Hello Dr. Wang! This is a simulation of the Hidden Markov Model as it is applied in the field of automated speech recognition. The model accepts a String sequence of observations of vocabulary {"1", "2", "3"} and computes the probability of observation sequences (likelihoods) and then decodes the input to produce the hidden state sequence.
 
